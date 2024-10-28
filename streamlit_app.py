@@ -7,13 +7,10 @@ from openpyxl.utils import get_column_letter
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 from datetime import datetime
-
-# Folder Output
-output_dir = "output"
-os.makedirs(output_dir, exist_ok=True)
+import io
 
 # Fungsi Transformasi Data
-def transform_data(input_file_path, output_file_path):
+def transform_data(input_file_path):
     df_input = pd.read_excel(input_file_path, header=5)
     df_input = df_input.dropna(subset=['Order No'])
     wb = Workbook()
@@ -22,7 +19,6 @@ def transform_data(input_file_path, output_file_path):
     # Styling
     header_fill = PatternFill(start_color="7CE086", end_color="7CE086", fill_type="solid")
     item_fill = PatternFill(start_color="7BA9E1", end_color="7BA9E1", fill_type="solid")
-    expense_fill = PatternFill(start_color="FFA500", end_color="FFA500", fill_type="solid")
 
     # Header
     ws.append(["HEADER", "No Form", "Tgl Pesanan", "No Pelanggan", "No PO", "Alamat", "Kena PPN", "Total Termasuk PPN",
@@ -59,10 +55,14 @@ def transform_data(input_file_path, output_file_path):
                 pass
         ws.column_dimensions[col_letter].width = max_length + 2
 
-    wb.save(output_file_path)
+    # Save to BytesIO instead of a file
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)  # Move the cursor to the beginning of the BytesIO object
+    return output
 
 # Fungsi Membuat Sales Order XML
-def create_sales_order_xml(input_file_path, output_file_path):
+def create_sales_order_xml(input_file_path):
     df = pd.read_excel(input_file_path, skiprows=5)
     df.columns = [col.strip() for col in df.columns]
 
@@ -96,8 +96,11 @@ def create_sales_order_xml(input_file_path, output_file_path):
         ET.SubElement(sales_order, "CURRENCYNAME").text = "IDR"
         
     xml_str = minidom.parseString(ET.tostring(root)).toprettyxml(indent="    ")
-    with open(output_file_path, "w", encoding="utf-8") as f:
-        f.write(xml_str)
+    # Save XML to BytesIO
+    output = io.BytesIO()
+    output.write(xml_str.encode("utf-8"))
+    output.seek(0)
+    return output
 
 # Streamlit UI
 st.title("Data Processor")
@@ -112,9 +115,6 @@ uploaded_files = st.file_uploader("Upload Excel file(s)", type=["xlsx"], accept_
 if uploaded_files:
     for file in uploaded_files:
         file_name = file.name
-        file_path = os.path.join(output_dir, file_name)
-        with open(file_path, "wb") as f:
-            f.write(file.getbuffer())
         
         # Proses Berdasarkan Pilihan
         if choice == "Sales Order":
@@ -122,13 +122,11 @@ if uploaded_files:
             st.write("Convert Excel to desired format:")
             
             if st.button("Convert to Excel (Accurate Online)"):
-                output_file_path = os.path.join(output_dir, f"{os.path.splitext(file_name)[0]}_AO.xlsx")
-                transform_data(file_path, output_file_path)
+                output = transform_data(file)
                 st.success("Data converted to Excel successfully.")
-                st.download_button("Download Excel", output_file_path)
+                st.download_button("Download Excel", f"{os.path.splitext(file_name)[0]}_AO.xlsx", output, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                 
             if st.button("Convert to XML (Accurate Desktop)"):
-                output_file_path = os.path.join(output_dir, f"{os.path.splitext(file_name)[0]}_AD.xml")
-                create_sales_order_xml(file_path, output_file_path)
+                output = create_sales_order_xml(file)
                 st.success("Data converted to XML successfully.")
-                st.download_button("Download XML", output_file_path)
+                st.download_button("Download XML", f"{os.path.splitext(file_name)[0]}_AD.xml", output, mime="application/xml")
