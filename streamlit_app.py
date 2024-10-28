@@ -124,9 +124,10 @@ if uploaded_files:
             if st.button("Convert to Excel (Accurate Online)"):
                 output = transform_data(file)
                 st.success("Data converted to Excel successfully.")
-                st.download_button("Download Excel", f"{os.path.splitext(file_name)[0]}_AO.xlsx", output, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                # Ensure output is in bytes-like format
+                st.download_button("Download Excel", f"{os.path.splitext(file_name)[0]}_AO.xlsx", data=output, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                 
             if st.button("Convert to XML (Accurate Desktop)"):
                 output = create_sales_order_xml(file)
                 st.success("Data converted to XML successfully.")
-                st.download_button("Download XML", f"{os.path.splitext(file_name)[0]}_AD.xml", output, mime="application/xml")
+                st.download_button("Download XML", f"{os.path.splitext(file_name)[0]}_AD.xml", data=output, mime="application/xml")
