@@ -10,8 +10,8 @@ from datetime import datetime
 import io
 
 # Fungsi Transformasi Data
-def transform_data(input_file_path):
-    df_input = pd.read_excel(input_file_path, header=5)
+def transform_data(input_file):
+    df_input = pd.read_excel(input_file, header=5)
     df_input = df_input.dropna(subset=['Order No'])
     wb = Workbook()
     ws = wb.active
@@ -62,8 +62,8 @@ def transform_data(input_file_path):
     return output
 
 # Fungsi Membuat Sales Order XML
-def create_sales_order_xml(input_file_path):
-    df = pd.read_excel(input_file_path, skiprows=5)
+def create_sales_order_xml(input_file):
+    df = pd.read_excel(input_file, skiprows=5)
     df.columns = [col.strip() for col in df.columns]
 
     def safe_str(value):
@@ -99,7 +99,7 @@ def create_sales_order_xml(input_file_path):
     # Save XML to BytesIO
     output = io.BytesIO()
     output.write(xml_str.encode("utf-8"))
-    output.seek(0)
+    output.seek(0)  # Ensure the stream position is reset
     return output
 
 # Streamlit UI
@@ -125,9 +125,19 @@ if uploaded_files:
                 output = transform_data(file)
                 st.success("Data converted to Excel successfully.")
                 # Ensure output is in bytes-like format
-                st.download_button("Download Excel", f"{os.path.splitext(file_name)[0]}_AO.xlsx", data=output, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                st.download_button(
+                    label="Download Excel", 
+                    data=output.getvalue(),  # Get the byte data from BytesIO
+                    file_name=f"{os.path.splitext(file_name)[0]}_AO.xlsx", 
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
                 
             if st.button("Convert to XML (Accurate Desktop)"):
                 output = create_sales_order_xml(file)
                 st.success("Data converted to XML successfully.")
-                st.download_button("Download XML", f"{os.path.splitext(file_name)[0]}_AD.xml", data=output, mime="application/xml")
+                st.download_button(
+                    label="Download XML", 
+                    data=output.getvalue(),  # Get the byte data from BytesIO
+                    file_name=f"{os.path.splitext(file_name)[0]}_AD.xml", 
+                    mime="application/xml"
+                )
